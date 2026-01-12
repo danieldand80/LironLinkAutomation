@@ -106,18 +106,16 @@ def run_check(start_row=2, log_fn=print):
     
     # Настройка Selenium
     options = webdriver.ChromeOptions()
-    options.add_argument('--headless')
+    options.add_argument('--headless=new')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
-    options.binary_location = '/usr/bin/chromium'
+    options.add_argument('--disable-software-rasterizer')
     
-    # На Railway используем системный chromedriver
-    if os.path.exists('/usr/bin/chromedriver'):
-        service = Service('/usr/bin/chromedriver')
-        driver = webdriver.Chrome(service=service, options=options)
-    else:
-        # Локально используем webdriver-manager
+    try:
+        driver = webdriver.Chrome(options=options)
+    except:
+        # Fallback с webdriver-manager
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=options)
     
