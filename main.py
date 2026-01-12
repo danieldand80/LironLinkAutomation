@@ -29,45 +29,54 @@ def check_url_active(driver, url):
     
     try:
         driver.get(url)
-        wait = WebDriverWait(driver, 10)
+        time.sleep(2)  # Ждем загрузки страницы
         
-        # Проверяем наличие типичных элементов товара
+        # Проверяем редирект на главную или 404
+        current_url = driver.current_url
+        if 'hamozot.com/products/' not in current_url:
+            print(f"  Редирект на: {current_url}")
+            return False
+        
+        # Проверяем наличие 404 текста
+        try:
+            page_text = driver.find_element(By.TAG_NAME, 'body').text
+            if 'עמוד לא נמצא' in page_text or '404' in page_text:
+                print(f"  Найден 404")
+                return False
+        except:
+            pass
+        
+        wait = WebDriverWait(driver, 5)
+        
+        # Проверяем типичные элементы товара
         selectors = [
             "//meta[@property='og:price:amount']",
             "//span[contains(@class, 'price')]",
             "//div[contains(@class, 'price')]",
-            "//*[contains(@class, 'product-price')]",
-            "//h1[contains(@class, 'product')]",
-            "//h1[contains(@class, 'title')]",
+            "//*[contains(text(), '₪')]",  # Проверка символа шекеля
+            "//h1",  # Любой заголовок H1
+            "//*[contains(@class, 'product')]",
         ]
         
         for selector in selectors:
             try:
-                wait.until(EC.presence_of_element_located((By.XPATH, selector)))
+                element = wait.until(EC.presence_of_element_located((By.XPATH, selector)))
+                print(f"  Найден элемент: {selector[:50]}")
                 return True
             except TimeoutException:
                 continue
         
-        # Если ни один элемент не найден, проверяем что мы не на главной странице
-        current_url = driver.current_url
-        if 'hamozot.com/products/' not in current_url:
-            return False
-            
+        print(f"  Элементы товара не найдены")
         return False
+        
     except (WebDriverException, Exception) as e:
-        print(f"Ошибка проверки {url}: {e}")
+        print(f"  Ошибка: {e}")
         return False
 
 def main():
-    # Получаем стартовую строку из env или input
-    start_row_env = os.getenv('START_ROW')
-    if start_row_env:
-        start_row = int(start_row_env)
-        print(f"Запуск с строки {start_row} (из env)...")
-    else:
-        start_row = input("С какой строки начать? (по умолчанию 2): ").strip()
-        start_row = int(start_row) if start_row else 2
-        print(f"Запуск с строки {start_row}...")
+    # Получаем стартовую строку из env (для Railway) или используем дефолт
+    start_row = int(os.getenv('START_ROW', '2'))
+    print(f"Запуск с строки {start_row}...")
     
     # Инициализация Google Sheets
     client = get_sheets_client()
