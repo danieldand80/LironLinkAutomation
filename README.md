@@ -32,13 +32,12 @@ python main.py
 ## Деплой на Railway
 
 1. Подключи GitHub репозиторий к Railway
-2. В настройках Deploy Commands:
-   - Build: `pip install -r requirements.txt`
-   - Start: `python main.py`
-3. В Settings → Nixpacks добавь в apt packages: `chromium chromium-driver`
-4. Переменные окружения:
+2. В Settings → Deploy:
+   - Start Command: `python app.py`
+   - Generate Domain (для доступа к веб-интерфейсу)
+3. Переменные окружения:
    - `GOOGLE_CREDENTIALS_JSON` - содержимое credentials.json (весь JSON как строка)
-   - `START_ROW` - стартовая строка (по умолчанию 2)
+   - `PORT` - 8080 (или любой порт для веб-интерфейса)
 
 ## Как работает
 

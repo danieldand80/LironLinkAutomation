@@ -1,10 +1,12 @@
 import gspread
 from google.oauth2.service_account import Credentials
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException
+from webdriver_manager.chrome import ChromeDriverManager
 import time
 import os
 import json
@@ -22,7 +24,7 @@ def get_sheets_client():
         creds = Credentials.from_service_account_file('credentials.json', scopes=SCOPES)
     return gspread.authorize(creds)
 
-def check_url_active(driver, url):
+def check_url_active(driver, url, log_fn=print):
     """Проверяет активность URL по наличию элементов на странице"""
     if not url or url.strip() == '':
         return False
@@ -34,14 +36,14 @@ def check_url_active(driver, url):
         # Проверяем редирект на главную или 404
         current_url = driver.current_url
         if 'hamozot.com/products/' not in current_url:
-            print(f"  Редирект на: {current_url}")
+            log_fn(f"  Редирект на: {current_url}")
             return False
         
         # Проверяем наличие 404 текста
         try:
             page_text = driver.find_element(By.TAG_NAME, 'body').text
             if 'עמוד לא נמצא' in page_text or '404' in page_text:
-                print(f"  Найден 404")
+                log_fn(f"  Найден 404")
                 return False
         except:
             pass
@@ -61,22 +63,20 @@ def check_url_active(driver, url):
         for selector in selectors:
             try:
                 element = wait.until(EC.presence_of_element_located((By.XPATH, selector)))
-                print(f"  Найден элемент: {selector[:50]}")
+                log_fn(f"  Найден элемент: {selector[:50]}")
                 return True
             except TimeoutException:
                 continue
         
-        print(f"  Элементы товара не найдены")
+        log_fn(f"  Элементы товара не найдены")
         return False
         
     except (WebDriverException, Exception) as e:
-        print(f"  Ошибка: {e}")
+        log_fn(f"  Ошибка: {e}")
         return False
 
-def main():
-    # Получаем стартовую строку из env (для Railway) или используем дефолт
-    start_row = int(os.getenv('START_ROW', '2'))
-    print(f"Запуск с строки {start_row}...")
+def run_check(start_row=2, log_fn=print):
+    log_fn(f"Запуск с строки {start_row}...")
     
     # Инициализация Google Sheets
     client = get_sheets_client()
@@ -97,11 +97,11 @@ def main():
             status_col_idx = idx
     
     if url_col_idx is None:
-        print("Не найден столбец с URL!")
+        log_fn("Не найден столбец с URL!")
         return
     
     if status_col_idx is None:
-        print("Не найден столбец Status!")
+        log_fn("Не найден столбец Status!")
         return
     
     # Настройка Selenium
@@ -109,7 +109,10 @@ def main():
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-    driver = webdriver.Chrome(options=options)
+    options.add_argument('--disable-gpu')
+    
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=options)
     
     try:
         # Проходим по строкам начиная с start_row
@@ -120,26 +123,27 @@ def main():
             # Получаем URL из строки
             url = row[url_col_idx] if url_col_idx < len(row) else ''
             
-            print(f"Проверка строки {row_num}: {url}")
+            log_fn(f"Проверка строки {row_num}: {url}")
             
             # Проверяем активность
             if not url or url.strip() == '':
                 status = 'not active'
             else:
-                is_active = check_url_active(driver, url)
+                is_active = check_url_active(driver, url, log_fn)
                 status = 'active' if is_active else 'not active'
             
             # Обновляем статус в таблице
             status_cell = f"{chr(65 + status_col_idx)}{row_num}"
             sheet.update(status_cell, status)
-            print(f"  → {status}")
+            log_fn(f"  → {status}")
             
             time.sleep(1)  # Пауза между запросами
     
     finally:
         driver.quit()
     
-    print("Готово!")
+    log_fn("Готово!")
 
 if __name__ == '__main__':
-    main()
+    start_row = int(os.getenv('START_ROW', '2'))
+    run_check(start_row)
