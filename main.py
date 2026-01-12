@@ -110,9 +110,16 @@ def run_check(start_row=2, log_fn=print):
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
+    options.binary_location = '/usr/bin/chromium'
     
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options)
+    # На Railway используем системный chromedriver
+    if os.path.exists('/usr/bin/chromedriver'):
+        service = Service('/usr/bin/chromedriver')
+        driver = webdriver.Chrome(service=service, options=options)
+    else:
+        # Локально используем webdriver-manager
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
     
     try:
         # Проходим по строкам начиная с start_row
