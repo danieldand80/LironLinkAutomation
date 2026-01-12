@@ -112,12 +112,25 @@ def run_check(start_row=2, log_fn=print):
     options.add_argument('--disable-gpu')
     options.add_argument('--disable-software-rasterizer')
     
+    # Указываем путь к Chrome явно
+    chrome_path = '/usr/bin/google-chrome-stable'
+    if os.path.exists(chrome_path):
+        options.binary_location = chrome_path
+        log_fn(f"Используем Chrome: {chrome_path}")
+    
     try:
         driver = webdriver.Chrome(options=options)
-    except:
+        log_fn("Chrome запущен успешно")
+    except Exception as e:
+        log_fn(f"Ошибка запуска Chrome: {e}")
         # Fallback с webdriver-manager
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=options)
+        try:
+            service = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=options)
+            log_fn("Chrome запущен через webdriver-manager")
+        except Exception as e2:
+            log_fn(f"Критическая ошибка: {e2}")
+            raise
     
     try:
         # Проходим по строкам начиная с start_row
