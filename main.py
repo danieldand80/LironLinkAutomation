@@ -152,7 +152,7 @@ def run_check(start_row=2, log_fn=print):
             
             # Обновляем статус в таблице
             status_cell = f"{chr(65 + status_col_idx)}{row_num}"
-            sheet.update(status_cell, status)
+            sheet.update(status_cell, [[status]])
             log_fn(f"  → {status}")
             
             time.sleep(1)  # Пауза между запросами
